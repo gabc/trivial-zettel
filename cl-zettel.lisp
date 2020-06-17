@@ -13,6 +13,13 @@
 
 (defvar file #P"/Users/g/lib/org/Zettelkasten.org")
 
+(defun get-no-tags (graph)
+  (let (nodes)
+    (cl-org-mode::do-leaf-nodes (n graph)
+      (if (null (cl-org-mode::tags-of n))
+          (push n nodes)))
+    nodes))
+
 (defun get-no-links (graph)
   (let (nodes)
     (cl-org-mode::do-leaf-nodes (n graph)
@@ -20,11 +27,38 @@
           (push n nodes)))
     nodes))
 
-(defun find-node (graph text)
-  (cl-org-mode::do-leaf-nodes (n graph)
-    (if (or (cl-ppcre:all-matches text (cl-org-mode::node.out n))
-            (cl-ppcre:all-matches text (cl-org-mode::title-of n)))
-        (return-from find-node n))))
+(defun find-node (graph predicate)
+  (let (nodes)
+    (cl-org-mode::do-leaf-nodes (n graph)
+      (if (funcall predicate n)
+          (push n nodes)))
+    nodes))
+(defmacro fn (graph &body body)
+  "Power interactive thing"
+  `(find-node ,graph (lambda (n) ,@body)))
+
+(defun find-node-text (graph text)
+  (find-node graph (lambda (n)
+                     (or (cl-ppcre:all-matches text (get-text n))
+                         (cl-ppcre:all-matches text (cl-org-mode::title-of n))))))
+
+(defun find-node-title (graph text)
+  (find-node graph (lambda (n)
+                     (cl-ppcre:all-matches text (cl-org-mode::title-of n)))) )
+
+(defun find-node-with-link (graph)
+  (find-node graph (lambda (n)
+                     (cl-ppcre:all-matches "\\[\\[" (get-text n)))))
+
+(defun get-link-name (link)
+  "From a link string [[link][description]]
+returns the title of the node"
+  (let* ((string (nth 1 (reverse (split-sequence:split-sequence #\[ link)))))
+    (if (= 0 (length string))
+        (return-from get-link-name "")
+        (setf string (string-right-trim '(#\]) (string-trim '(#\*) string))))
+    string))
+
 (defun get-nodes (&optional file-arg)
   (cl-org-mode::org-parse (or file-arg file)))
 
