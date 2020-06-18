@@ -4,7 +4,7 @@
 
 (defun format-dates (title)
   (cl-ppcre:regex-replace "%5D"
-                          (cl-ppcre:regex-replace "\\*%5B" title "[")
+                          (cl-ppcre:regex-replace "%5B" title "[")
                           "]"))
 (defun date-to-regex (date)
   (cl-ppcre:regex-replace "\\]"
@@ -70,3 +70,23 @@ returns the title of the node"
                (cl-org-mode::section-of node)))
          (car (cl-org-mode::children-of
                (cl-org-mode::section-of node))))))
+
+
+(defun replace-all (tx)
+  (cl-ppcre:regex-replace-all "\/"
+                              (cl-ppcre:regex-replace-all "\\\["
+                                                          (cl-ppcre:regex-replace-all "\\\]" tx "\\\]")
+                                                          "\\\[") "\\/"))
+(defun dot ()
+  (let (nodes g text)
+    (setf g (cl-org-mode::org-parse file))
+    (setf nodes (find-node-with-link g))
+    (format t "digraph \"zettel\" {~%")
+    (dolist (n nodes)
+      (setf text (split-sequence:split-sequence #\Newline (get-text n)))
+      (dolist (l text) 
+        (when (and (cl-ppcre:all-matches "\\[\\[" l)
+                   (not (cl-ppcre:all-matches "http" (get-link-name l))))
+          (format t "\"~A\" -> \"~A\";~%" (replace-all (cl-org-mode::title-of n))
+                  (replace-all (format-dates (get-link-name l)))))))
+    (format t "}~%")))
