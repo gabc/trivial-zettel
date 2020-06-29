@@ -90,3 +90,12 @@ returns the title of the node"
           (format t "\"~A\" -> \"~A\";~%" (replace-all (cl-org-mode::title-of n))
                   (replace-all (format-dates (get-link-name l)))))))
     (format t "}~%")))
+
+
+(defun tags (graph)
+  (let (tags)
+    (cl-org-mode::do-leaf-nodes (n graph)
+      (dolist (tg (cl-org-mode::tags-of n))
+        (push tg tags)))
+    (sort (remove-duplicates tags :test #'string=)
+          #'string<)))
